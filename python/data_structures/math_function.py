@@ -1,7 +1,7 @@
 def add(x,y):
     answer = x + y
-    print(answer)
+    return answer
 
 def multiplication(x,y):
     answer = x * y
-    print(answer)
+    return answer
