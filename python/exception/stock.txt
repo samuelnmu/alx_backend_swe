@@ -1,0 +1,204 @@
+import json
+import re
+from getpass import getpass  # For secure password input
+
+class ShoppingSystem:
+    def __init__(self):
+        self.users = []
+        self.products = []
+        self.load_data()  # Load existing data
+    
+    # File operations
+    def load_data(self):
+        try:
+            with open('users.json', 'r') as f:
+                self.users = json.load(f)
+        except FileNotFoundError:
+            self.users = []
+        
+        try:
+            with open('products.json', 'r') as f:
+                self.products = json.load(f)
+        except FileNotFoundError:
+            self.products = [
+                {"id": 1, "name": "T-Shirt", "price": 19.99, "stock": 100},
+                {"id": 2, "name": "Jeans", "price": 49.99, "stock": 50},
+                {"id": 3, "name": "Sneakers", "price": 79.99, "stock": 30}
+            ]
+    
+    def save_data(self):
+        with open('users.json', 'w') as f:
+            json.dump(self.users, f, indent=2)
+        with open('products.json', 'w') as f:
+            json.dump(self.products, f, indent=2)
+
+    # User registration
+    def register_user(self):
+        print("\n--- Registration ---")
+        user_data = {
+            "name": self._collect_name(),
+            "email": self._collect_email(unique=True),
+            "password": self._collect_password(),
+            "phone": self._collect_phone(),
+            "cart": [],
+            "orders": []
+        }
+        self.users.append(user_data)
+        self.save_data()
+        print("\nRegistration successful!")
+        return user_data
+    
+    # Input validation methods
+    def _collect_name(self):
+        while True:
+            name = input("Enter full name: ").strip()
+            if re.match(r'^[A-Za-z\s]{2,}$', name):
+                return name
+            print("Invalid name! Use only letters and spaces (min 2 chars).")
+
+    def _collect_email(self, unique=False):
+        while True:
+            email = input("Enter email: ").lower().strip()
+            if not re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', email):
+                print("Invalid email format! Use example@domain.com")
+                continue
+            
+            if unique and any(u['email'] == email for u in self.users):
+                print("Email already registered! Please login or use another email.")
+                continue
+                
+            return email
+
+    def _collect_password(self):
+        while True:
+            password = getpass("Enter password (min 8 chars): ")
+            if len(password) < 8:
+                print("Password too short! Minimum 8 characters required.")
+                continue
+            
+            confirm = getpass("Confirm password: ")
+            if password != confirm:
+                print("Passwords don't match! Try again.")
+                continue
+                
+            return password  # In real system, hash this password!
+
+    def _collect_phone(self):
+        while True:
+            phone = input("Enter phone number (digits only): ").strip()
+            if re.match(r'^\d{10,15}$', phone):
+                return phone
+            print("Invalid phone! Use 10-15 digits only.")
+
+    # Product catalog
+    def display_products(self):
+        print("\n--- Available Products ---")
+        for product in self.products:
+            print(f"ID: {product['id']} | {product['name']} | ${product['price']} | Stock: {product['stock']}")
+
+    # User authentication
+    def login(self):
+        print("\n--- Login ---")
+        email = input("Email: ").lower().strip()
+        password = getpass("Password: ")
+        
+        for user in self.users:
+            if user['email'] == email and user['password'] == password:
+                print(f"\nWelcome back, {user['name']}!")
+                return user
+        
+        print("\nInvalid email or password!")
+        return None
+
+    # Shopping features
+    def add_to_cart(self, user):
+        self.display_products()
+        try:
+            product_id = int(input("\nEnter product ID to add to cart: "))
+            quantity = int(input("Enter quantity: "))
+            
+            product = next((p for p in self.products if p['id'] == product_id), None)
+            
+            if product and product['stock'] >= quantity:
+                user['cart'].append({
+                    "product_id": product_id,
+                    "name": product['name'],
+                    "price": product['price'],
+                    "quantity": quantity
+                })
+                print(f"Added {quantity} x {product['name']} to your cart!")
+            else:
+                print("Invalid product ID or insufficient stock!")
+        except ValueError:
+            print("Please enter valid numbers!")
+
+    def checkout(self, user):
+        if not user['cart']:
+            print("Your cart is empty!")
+            return
+        
+        total = sum(item['price'] * item['quantity'] for item in user['cart'])
+        print(f"\n--- Checkout ---\nTotal: ${total:.2f}")
+        
+        if input("Confirm purchase? (y/n): ").lower() == 'y':
+            # Update product stock
+            for item in user['cart']:
+                product = next(p for p in self.products if p['id'] == item['product_id'])
+                product['stock'] -= item['quantity']
+            
+            user['orders'].append({
+                "items": user['cart'].copy(),
+                "total": total,
+                "status": "completed"
+            })
+            user['cart'] = []
+            self.save_data()
+            print("Purchase completed! Thank you!")
+
+# Main program
+def main():
+    system = ShoppingSystem()
+    
+    while True:
+        print("\n===== Shopping System =====")
+        print("1. Register")
+        print("2. Login")
+        print("3. View Products")
+        print("4. Exit")
+        
+        choice = input("Select option: ")
+        
+        if choice == "1":
+            system.register_user()
+        elif choice == "2":
+            user = system.login()
+            if user:
+                while True:
+                    print("\n1. View Products")
+                    print("2. Add to Cart")
+                    print("3. View Cart")
+                    print("4. Checkout")
+                    print("5. Logout")
+                    
+                    user_choice = input("Select option: ")
+                    
+                    if user_choice == "1":
+                        system.display_products()
+                    elif user_choice == "2":
+                        system.add_to_cart(user)
+                    elif user_choice == "3":
+                        print("\n--- Your Cart ---")
+                        for item in user['cart']:
+                            print(f"{item['quantity']} x {item['name']} @ ${item['price']}")
+                    elif user_choice == "4":
+                        system.checkout(user)
+                    elif user_choice == "5":
+                        break
+        elif choice == "3":
+            system.display_products()
+        elif choice == "4":
+            print("Thank you for shopping with us!")
+            break
+
+if __name__ == "__main__":
+    main()
