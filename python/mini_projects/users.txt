@@ -1,0 +1,5 @@
+ID | First Name | Second Name | Email | Phone
+--------------------------------------------------
+1 | Samuel | Ngige | sam@gmail.com | 713625483
+2 | Alice  | Tracy | alice@gmail.com | 237438383892
+3 | James | Njenga | jamo@gmail.com | 94747383993
